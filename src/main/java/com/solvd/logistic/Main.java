@@ -14,7 +14,9 @@ import com.solvd.logistic.exceptions.*;
 import com.solvd.logistic.wordcounter.WordCounterInFile;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
+import com.solvd.logistic.functional.IShippingValidator;
+import com.solvd.logistic.functional.IClientFormatter;
+import com.solvd.logistic.functional.IPriceAdjuster;
 import java.io.IOException;
 import java.util.*;
 
@@ -49,7 +51,10 @@ public class Main {
 
 
         boolean running = true;
-
+        // Lambdas
+        IShippingValidator weightValidator = (w) -> w > 0 && w <= 1000;
+        IClientFormatter clientFormatter = (name, address) -> "Client: " + name + " | Address: " + address;
+        IPriceAdjuster discountAdjuster = (p) -> p * 0.9; // 10% discount
         while (running) {
             SLOGGER.info(" ");
             LOGGER.info("=== LOGISTICS SYSTEM ===");
@@ -94,6 +99,10 @@ public class Main {
                         break;
                     }
 
+                    SLOGGER.info(" ");
+                    String formattedSender = clientFormatter.format(sender.getName(), sender.getAddress());
+                    LOGGER.info("Sender information: {}", formattedSender);
+
                     // Receiver
                     SLOGGER.info("Receiver name: ");
                     String receiverName = scanner.nextLine();
@@ -104,6 +113,7 @@ public class Main {
                     SLOGGER.info("Receiver ID: ");
                     String receiverId = scanner.nextLine();
 
+
                     Client receiver = new Client(receiverName, receiverAddress, null, Gender.NA);
                     try{
                         sender.setAddress(senderAddress);
@@ -111,6 +121,9 @@ public class Main {
                         LOGGER.info("INVALID address assign : {}", e.getMessage());
                         break;
                     }
+
+                    String formattedReceiver = clientFormatter.format(receiver.getName(), receiver.getAddress());
+                    LOGGER.info("Receiver information: {}", formattedReceiver);
 
                     try{
                         receiver.setId(receiverId);
@@ -125,6 +138,10 @@ public class Main {
 
                     SLOGGER.info("Package weight (lb): ");
                     double weight = Double.parseDouble(scanner.nextLine());
+                    if (!weightValidator.validate(weight)) {
+                        LOGGER.info("Invalid weight. The weight must be between 0 and 1000 lbs.");
+                        break;
+                    }
 
                     String shippingNumber = "SHP" + shippingCounter++;
                     GenericContainer<StandartPackage> packageContainer = new GenericContainer<>(new StandartPackage(shippingNumber, (double) 0, description));
@@ -149,7 +166,12 @@ public class Main {
 
                     // Calculate price
                     double price = PriceCalculator.computePrice(pack.getWeight(), route.getDistance());
-
+                    SLOGGER.info("Do you want to apply 10% discount?");
+                    String discountChoice = scanner.nextLine().toLowerCase();
+                    double finalPrice = price;
+                    if (discountChoice.equals("yes")){
+                        finalPrice = discountAdjuster.adjust(price);
+                    }
                     // Shipping
                     Shipping shipping = new Shipping("5/10",sender, receiver, pack, defaultVehicle.getItem(), ShippingStatus.PENDING);
                     shippingStorage.add(shippingNumber, shipping);
@@ -159,6 +181,7 @@ public class Main {
                     LOGGER.info("Shipping registered successfully.");
                     SLOGGER.info("Shipping number: {}", shippingNumber);
                     SLOGGER.info("Estimated price: ${}", price);
+                    LOGGER.info("Final price: ${}", String.format("%.2f", finalPrice));
                     break;
 
 
