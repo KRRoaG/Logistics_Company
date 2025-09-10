@@ -2,7 +2,6 @@ package com.solvd.logistic.model;
 
 import com.solvd.logistic.service.Shipping;
 import com.solvd.logistic.exceptions.ShippingNotFoundException;
-
 import java.util.List;
 
 public class ShippingService {
@@ -13,12 +12,10 @@ public class ShippingService {
     }
 
     public Shipping findShippingByNumber (String number) throws ShippingNotFoundException{
-        for (Shipping s : shippings){
-            if (s.getPack().getShipNumber().equals(number)){
-                return s;
-            }
-        }
-        throw new ShippingNotFoundException("The shipment with number  " + number + " was not found");
+        return shippings.stream()
+                  .filter(s -> s.getPack().getShipNumber().equals(number))
+                  .findFirst()
+                  .orElseThrow(() -> new ShippingNotFoundException("The shipment with number  \" + number + \" was not found"));
     }
 
 }
