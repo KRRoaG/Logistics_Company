@@ -1,4 +1,7 @@
 package com.solvd.logistic;
+import com.solvd.logistic.anottation.ExpressShipping;
+import com.solvd.logistic.anottation.ShippingType;
+import com.solvd.logistic.anottation.StandardShipping;
 import com.solvd.logistic.enums.Gender;
 import com.solvd.logistic.enums.ShippingStatus;
 import com.solvd.logistic.enums.Zone;
@@ -131,6 +134,37 @@ public class Main {
                         LOGGER.info("INVALID assign : {}", e.getMessage());
                         break;
                     }
+                    SLOGGER.info(("Shipping type (express or standard):"));
+                    String shippingType = scanner.nextLine().toLowerCase();
+                    try {
+
+                        Class<?>[] shippingClasses = {
+                                ExpressShipping.class,
+                                StandardShipping.class
+                        };
+
+                        boolean found = false;
+
+                        for (Class<?> clazz : shippingClasses) {
+                            if (clazz.isAnnotationPresent(ShippingType.class)) {
+                                ShippingType annotation = clazz.getAnnotation(ShippingType.class);
+                                if (annotation.value().equals(shippingType)) {
+                                    Object shippingObject = clazz.getDeclaredConstructor().newInstance();
+                                    int priority = (int) clazz.getMethod("shippingPriority").invoke(shippingObject);
+                                    LOGGER.info("Shipping priority set to: {}", priority);
+                                    found = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!found) {
+                            LOGGER.info("Invalid shipping type. Defaulting to standard.");
+                        }
+
+                    } catch (Exception e) {
+                        LOGGER.error("Error processing shipping type: {}", e.getMessage());
+                    }
 
                     // Package
                     SLOGGER.info("Package description: ");
@@ -157,7 +191,7 @@ public class Main {
                     // Route (dummy)
                     Route route;
                     try{
-                        route = new Route(center.getAddress(), receiverAddress, 120.0, "A508");
+                        route = new Route(center.address(), receiverAddress, 120.0, "A508");
                     }catch (RouteNotFoundException e){
                         LOGGER.info(e.getMessage());
                         break;
